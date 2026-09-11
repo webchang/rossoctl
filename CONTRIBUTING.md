@@ -1,6 +1,6 @@
 # Contributing to this project
 
-Greetings! We are grateful for your interest in joining the Kagenti community and making a positive impact. Whether you're raising issues, enhancing documentation, fixing bugs, or developing new features, your contributions are essential to our success.
+Greetings! We are grateful for your interest in joining the Rossoctl community and making a positive impact. Whether you're raising issues, enhancing documentation, fixing bugs, or developing new features, your contributions are essential to our success.
 
 To get started, kindly read through this document and familiarize yourself with our code of conduct.
 
@@ -10,12 +10,12 @@ We can't wait to collaborate with you!
 
 ### Developer's Guide
 
-Please follow our [Developer's Guide](./docs/dev-guide.md) where you can find comprehensive instructions
+Please follow our [Developer's Guide](./docs/_internal/dev-guide.md) where you can find comprehensive instructions
 for common development operations.
 
 ### Prerequisites
 
-Follow [installation](./docs/install.md) instructions.
+Follow [installation](./docs/operate/install-kubernetes.md) instructions.
 
 ### Issues
 
@@ -54,12 +54,17 @@ The pull request template has been designed to assist you in communicating this 
 
 Smaller pull requests are typically easier to review and merge than larger ones. If your pull request is big, it is always recommended to collaborate with the maintainers to find the best way to divide it.
 
-See the [making PR](./docs/dev-guide.md#making-a-pr) document for detailed instructions.
+See the [making PR](./docs/_internal/dev-guide.md#making-a-pr) document for detailed instructions.
+
+Before a feature is accepted into a release it must meet the project's
+[Feature Acceptance Standard](./FEATURE_ACCEPTANCE.md), a tiered bar covering code
+quality, documentation, demonstrated value, and environment portability. The pull
+request template walks you through the applicable checklist.
 
 ## Releasing
 
-Maintainers: see the [Releasing Guide](./docs/releasing.md) for how to create
-tags, pre-releases, and stable (GA) releases across the Kagenti organization.
+Maintainers: see the [Releasing Guide](./docs/_internal/releasing.md) for how to create
+tags, pre-releases, and stable (GA) releases across the Rossoctl organization.
 
 ## Contributing Documentation
 
@@ -69,18 +74,18 @@ Documentation improvements are always welcome! When contributing documentation, 
 
 When adding diagrams to the documentation, please place them in the appropriate location:
 
-- **General images and architecture diagrams**: Place PNG, JPG, or other image files in [`docs/images/`](./docs/images/). This includes architecture diagrams, screenshots, QR codes, and other visual assets used across the documentation. We recommend using [draw.io](https://draw.io) for generating diagrams so they can be easily edited in the future. 
+- **General images and architecture diagrams**: Place PNG, JPG, or other image files in [`docs/images/`](./docs/images/). This includes architecture diagrams, screenshots, QR codes, and other visual assets used across the documentation. We recommend using [draw.io](https://draw.io) for generating diagrams so they can be easily edited in the future.
 
 - **Mermaid sequence diagrams**: Place Mermaid source files (`.mmd`) in [`docs/diagrams/`](./docs/diagrams/) and generate PNG versions in [`docs/diagrams/images/png/`](./docs/diagrams/images/png/). See the [diagrams README](./docs/diagrams/README.md) for instructions on generating diagram images from Mermaid source files.
 
-When referencing diagrams in documentation, use relative paths from the documentation file location (e.g., `./images/kagenti-architecture.drawio.png` or `../diagrams/images/png/01-user-authentication-flow.png`).
+When referencing diagrams in documentation, use relative paths from the documentation file location (e.g., `./images/rossoctl-architecture.drawio.png` or `../diagrams/images/png/01-user-authentication-flow.png`).
 
 ## Licensing
 
-Kagenti is [Apache 2.0 licensed](LICENSE) and we accept contributions via
+Rossoctl is [Apache 2.0 licensed](LICENSE) and we accept contributions via
 GitHub pull requests.
 
-Please read the following if you're interested in contributing to Kagenti.
+Please read the following if you're interested in contributing to Rossoctl.
 
 ## Certificate of Origin
 

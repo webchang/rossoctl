@@ -28,7 +28,7 @@ updates:
 
   # Python (backend) — FastAPI backend dependencies
   - package-ecosystem: pip
-    directory: /kagenti/backend
+    directory: /rossoctl/backend
     schedule:
       interval: weekly
     labels:
@@ -40,15 +40,22 @@ updates:
         update-types: [major]
     ignore:
       # cryptography 47+ crashes with SIGILL on ARM64 Kind clusters.
-      # Pin is intentional — block all bumps above the current upper bound.
-      # Effect: only patch bumps allowed until the SIGILL is resolved upstream.
-      # TODO: remove once upstream fix lands (https://github.com/pyca/cryptography/issues/14764)
+      # Pin is intentional — the pyproject cap is cryptography<47.
+      # `versions: [">=47"]` blocks BOTH semver-major version bumps AND
+      # requirement-range-widening PRs (e.g. "Update cryptography requirement
+      # from <47 to <50"), which `update-types` alone does not catch.
+      # Effect: only minor+patch bumps below 47 allowed while the crash reproduces.
+      # Root cause (pyca/cryptography#14764, closed): not a library bug but stale
+      # ARM64 emulation in old Docker Desktop (<=4.38). The pin guards CI/dev runners
+      # still on those versions.
+      # TODO: drop this ignore (and the pyproject <47 cap) once all runners are on a
+      # Docker that no longer SIGILLs — verify by importing cryptography 47+ on ARM64 Kind.
       - dependency-name: "cryptography"
-        update-types: [version-update:semver-major, version-update:semver-minor]
+        versions: [">=47"]
 
   # npm (UI) — React frontend dependencies
   - package-ecosystem: npm
-    directory: /kagenti/ui-v2
+    directory: /rossoctl/ui-v2
     schedule:
       interval: weekly
     labels:
@@ -86,7 +93,7 @@ updates:
 
   # Go (TUI) — Go module dependencies
   - package-ecosystem: gomod
-    directory: /kagenti/tui
+    directory: /rossoctl/tui
     schedule:
       interval: weekly
     labels:
@@ -112,7 +119,7 @@ updates:
 
   # Docker — application images
   - package-ecosystem: docker
-    directory: /kagenti/backend
+    directory: /rossoctl/backend
     schedule:
       interval: weekly
     labels:
@@ -124,7 +131,7 @@ updates:
         update-types: [major]
 
   - package-ecosystem: docker
-    directory: /kagenti/ui-v2
+    directory: /rossoctl/ui-v2
     schedule:
       interval: weekly
     labels:
@@ -136,7 +143,7 @@ updates:
         update-types: [major]
 
   - package-ecosystem: docker
-    directory: /kagenti/auth/agent-oauth-secret
+    directory: /rossoctl/auth/agent-oauth-secret
     schedule:
       interval: weekly
     labels:
@@ -148,7 +155,7 @@ updates:
         update-types: [major]
 
   - package-ecosystem: docker
-    directory: /kagenti/auth/api-oauth-secret
+    directory: /rossoctl/auth/api-oauth-secret
     schedule:
       interval: weekly
     labels:
@@ -160,7 +167,7 @@ updates:
         update-types: [major]
 
   - package-ecosystem: docker
-    directory: /kagenti/auth/mlflow-oauth-secret
+    directory: /rossoctl/auth/mlflow-oauth-secret
     schedule:
       interval: weekly
     labels:
@@ -172,7 +179,7 @@ updates:
         update-types: [major]
 
   - package-ecosystem: docker
-    directory: /kagenti/auth/ui-oauth-secret
+    directory: /rossoctl/auth/ui-oauth-secret
     schedule:
       interval: weekly
     labels:

@@ -165,6 +165,7 @@ cython_debug/
 **/.DS_Store
 
 .vscode
+.bob
 
 .secrets.yaml
 .secret_values.yaml
@@ -179,7 +180,7 @@ node_modules/
 .bin/
 
 # HyperShift CI credentials (covered by .env.* above)
-.env.kagenti-*
+.env.rossoctl-*
 .env.hypershift-ci
 
 # Git worktrees for parallel development
@@ -187,9 +188,9 @@ node_modules/
 test-results/
 
 # TUI binary
-kagenti/tui/bin/
-# kubectl-kagenti plugin binary (build locally; do not commit)
-kagenti/kubectl-kagenti/kubectl-kagenti
+rossoctl/tui/bin/
+# kubectl-rossoctl plugin binary (build locally; do not commit)
+rossoctl/kubectl-rossoctl/kubectl-rossoctl
 # Orchestration target repos (cloned, not committed)
 .repos/
 
@@ -200,3 +201,4 @@ kagenti/kubectl-kagenti/kubectl-kagenti
 .cves/
 .claude/scheduled_tasks.lock
 .claude/worktrees/
+.claude/settings.local.json

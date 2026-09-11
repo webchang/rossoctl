@@ -1,108 +1,56 @@
 
-# Kagenti
+# Rossoctl
 
-[![CI](https://github.com/kagenti/kagenti/actions/workflows/ci.yaml/badge.svg)](https://github.com/kagenti/kagenti/actions/workflows/ci.yaml)
-[![E2E K8s 1.35.0 (Kind)](https://github.com/kagenti/kagenti/actions/workflows/e2e-kind.yaml/badge.svg)](https://github.com/kagenti/kagenti/actions/workflows/e2e-kind.yaml)
-[![E2E OCP 4.20.21 (HyperShift)](https://github.com/kagenti/kagenti/actions/workflows/e2e-hypershift.yaml/badge.svg)](https://github.com/kagenti/kagenti/actions/workflows/e2e-hypershift.yaml)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/kagenti/kagenti/badge)](https://scorecard.dev/viewer/?uri=github.com/kagenti/kagenti)
-[![GitHub Release](https://img.shields.io/github/v/release/kagenti/kagenti)](https://github.com/kagenti/kagenti/releases/latest)
-[![License](https://img.shields.io/github/license/kagenti/kagenti)](LICENSE)
-[![Slack](https://img.shields.io/badge/Slack-Join%20us-4A154B?logo=slack&logoColor=white)](https://ibm.biz/kagenti-slack)
+[![CI](https://github.com/rossoctl/rossoctl/actions/workflows/ci.yaml/badge.svg)](https://github.com/rossoctl/rossoctl/actions/workflows/ci.yaml)
+[![E2E K8s 1.35.0 (Kind)](https://github.com/rossoctl/rossoctl/actions/workflows/e2e-kind.yaml/badge.svg)](https://github.com/rossoctl/rossoctl/actions/workflows/e2e-kind.yaml)
+[![E2E OCP 4.20.21 (HyperShift)](https://github.com/rossoctl/rossoctl/actions/workflows/e2e-hypershift.yaml/badge.svg)](https://github.com/rossoctl/rossoctl/actions/workflows/e2e-hypershift.yaml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/rossoctl/rossoctl/badge)](https://scorecard.dev/viewer/?uri=github.com/rossoctl/rossoctl)
+[![GitHub Release](https://img.shields.io/github/v/release/rossoctl/rossoctl)](https://github.com/rossoctl/rossoctl/releases/latest)
+[![License](https://img.shields.io/github/license/rossoctl/rossoctl)](LICENSE)
+[![Slack](https://img.shields.io/badge/Slack-Join%20us-4A154B?logo=slack&logoColor=white)](https://ibm.biz/rossoctl-slack)
 
-**Kagenti** is a cloud-native middleware providing a *framework-neutral*, *scalable*, and *secure* platform for deploying and orchestrating AI agents through standardized agent communication protocols (A2A, MCP).
+## Platform primitives for trustworthy AI agents
 
-| Included Services: |  |
-|--------------------|--------|
-| - Zero-Trust Security Architecture<br>- Authentication and Authorization<br>- Trusted workload identity (SPIRE)<br>- Deployment and Configuration<br>- Scaling and Fault-tolerance<br>- Discovery of agents and tools<br>- State Persistence | <img src="banner.png" width="400"/> |
+Rossoctl is a set of platform primitives for agent security, resilience, reliability, and efficiency. It has three parts: **RossoCortex**, a data plane; a set of callable **services**; and **tooling** for observability, security, governance, and administration.
 
-## Why Kagenti?
+It is open source, framework-neutral, and built on open standards, supporting [A2A](https://a2a-protocol.org/latest/) and [MCP](https://modelcontextprotocol.io).
 
-Despite the extensive variety of frameworks available for developing agent-based applications (LangGraph, CrewAI, AG2, etc.), there is a distinct lack of standardized methods for deploying and operating agent code in production environments. Agents are adept at reasoning, planning, and interacting with tools, but their full potential is often limited by:
+> **Get started** → [Quickstart](./docs/get-started/kubernetes.md) · Learn more at [rossoctl.dev](https://rossoctl.dev/)
 
-- **Deployment Complexity** - Each framework requires custom deployment scripts and infrastructure
-- **Security Gaps** - No standardized approach to authentication, authorization, and workload identity
-- **Protocol Fragmentation** - Agents and tools use different communication patterns
-- **Operational Overhead** - Scaling, monitoring, and lifecycle management require custom solutions
+## The problem
 
-Kagenti addresses these challenges by enhancing existing agent frameworks with production-ready, framework-neutral infrastructure.
+AI agents are not traditional cloud applications. They choose their tools at runtime, blur the line between data and instructions, drift from their original goals, and cannot reliably report what they actually did.
 
-## Supported AI Use‑Case Types
-Kagenti is designed to support a broad range of AI‑agent deployment patterns, including knowledge services, synchronous and asynchronous user‑authorized assistants, continuous monitoring agents, and event‑driven workflows.
+Kubernetes decoupled application logic from the guarantees production demands around admission, isolation, and failure recovery. An agent platform has to do the same for agents: decouple agent logic from the guarantees around admission, isolation, and failure recovery, so those guarantees hold no matter which framework built the agent.
 
-See the full list and definitions in the **[Kagenti Use Cases](./docs/use-case-types.md)** document.
+## RossoCortex, the data plane
 
-## Architecture
+RossoCortex is an intercept. It sits transparently between an agent and everything external it touches: models, tools, users, and other agents. From that single vantage point it enforces guarantees an agent cannot provide on its own.
 
-The goal of Kagenti is to provide a pluggable agentic platform blueprint. Key functionalities are currently organized into four key pillars:
-1. Lifecycle Orchestration
-2. Networking
-3. Security
-4. Observability
+It is flexible by design: it works with different agent types, including black-box harnesses, integrates with different sandboxes, and works across container network choices.
 
-Under each of these pillars are logical components that support the workload runtime.
+| Capability | Status |
+|------------|--------|
+| Agent identity — every agent carries a verifiable identity, so the platform knows who is acting before it decides what they may do | Ready |
+| Authorization and access | Ready |
+| Intent-based access | beta in 0.7 |
+| Tool semantic validation | beta in 0.7 |
+| Context compaction | alpha in 0.7 |
+| Data-flow analysis | alpha in 0.7 |
+| Failure recovery | beta in 0.7 |
+| User interaction | beta in 0.7 |
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                                         KAGENTI PLATFORM                                │
-├─────────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                         │
-│  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
-│  │                                  KAGENTI UI*                                      │  │
-│  │          (Dashboard: Deploy, Test, Monitor Agents & Tools + Backend API)          │  │
-│  └───────────────────────────────────────────────────────────────────────────────────┘  │
-│                                                 │                                       │
-│                                                 ▼                                       │
-│  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
-│  │                                    WORKLOAD RUNTIME                               │  │
-│  │   ┌──────────────────────┐    ┌──────────────────────┐    ┌───────────────────┐   │  │
-│  │   │       AGENTS         │    │        TOOLS         │    │      SKILLS       │   │  │
-│  │   │  (A2A - LangGraph,   │    │  (MCP Protocol       │    │    (Reusable      │   │  │
-│  │   │   CrewAI, Marvin,    │    │   Servers)           │    │   capabilities)   │   │  │
-│  │   │   Autogen, etc.)     │    │                      │    │                   │   │  │
-│  │   └──────────────────────┘    └──────────────────────┘    └───────────────────┘   │  │
-│  └───────────────────────────────────────────────────────────────────────────────────┘  │
-│                                                 │                                       │
-├─────────────────────────────────────────────────┼───────────────────────────────────────┤
-│                                        PLATFORM PILLARS                                 │
-│                                                 │                                       │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────┐   │
-│  │    LIFECYCLE     │  │    NETWORKING    │  │     SECURITY     │  │  OBSERVABILITY │   │
-│  │  ORCHESTRATION   │  │                  │  │                  │  │                │   │
-│  ├──────────────────┤  ├──────────────────┤  ├──────────────────┤  ├────────────────┤   │
-│  │                  │  │                  │  │                  │  │                │   │
-│  │   Agents/Tools   │  │   Tool Routing   │  │  Identity & Auth │  │    Tracing     │   │
-│  │   Lifecycle &    │  │    & Policy      │  │   (AuthBridge*)  │  │(MLflow,Langflow│   │
-│  │   Discovery      │  │  (MCP Gateway)   │  │                  │  │ Phoenix)       │   │
-│  │ (k8s workloads,  │  │                  │  │                  │  │                │   │
-│  │ labels,          │  ├──────────────────┤  ├──────────────────┤  ├────────────────┤   │
-│  │  AgentCard CRD*) │  │                  │  │                  │  │                │   │
-│  │                  │  │  Service Mesh    │  │    OAuth/OIDC    │  │   Network      │   │
-│  │                  │  │ (Istio/Ambient)  │  │    (Keycloak)    │  │ Visualization  │   │
-│  │                  │  │                  │  │                  │  │   (Kiali)      │   │
-│  │   Container      │  ├──────────────────┤  ├──────────────────┤  │                │   │
-│  │     Builds       │  │                  │  │                  │  │                │   │
-│  │  (Shipwright)    │  │ Ingress/Routing  │  │ Workload Identity│  │                │   │
-│  │                  │  │ (Gateway API)    │  │ (SPIFFE/SPIRE)   │  │                │   │
-│  │                  │  │                  │  │                  │  │                │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────────┘  └────────────────┘   │
-│                                                                                         │
-├─────────────────────────────────────────────────────────────────────────────────────────┤
-│                                 KUBERNETES / OPENSHIFT                                  │
-└─────────────────────────────────────────────────────────────────────────────────────────┘
-* = Built by Kagenti
-```
+Agents integrate with RossoCortex through multiple paths — an **SDK**, agent **hooks**, a **gateway**, or an **orchestration** layer — behind a common intercept abstraction that spans MCP tools, API/CLI tools, and agents.
 
-## Core Components
+## Rossoctl services
 
-Kagenti provides a set of components and assets that make it easier to manage AI agents and tools and integrate their fine-grained authorization into modern cloud-native environments.
+Beyond the data plane, Rossoctl provides the building blocks agents need to do real work — lowering the risk of agentic workloads while using resources more efficiently:
 
-| Component | Description |
-|-----------|-------------|
-| **[Kagenti UI](./kagenti/ui-v2/)** | Dashboard for deploying agents/tools as Kubernetes Deployments, interactive testing, and monitoring |
-| **[Identity & Auth Bridge](./docs/identity-guide.md)** | Identity pattern assets that capture common authorization scenarios and provide reusable building blocks for implementing consistent authorization across services |
-| **[Agent Lifecycle Operator](https://github.com/kagenti/kagenti-extensions/tree/main/kagenti-webhook)** | Kubernetes admission webhook for building agents from source, managing lifecycle, and coordinating platform services |
-| **[MCP Gateway](https://github.com/Kuadrant/mcp-gateway/blob/main/README.md)** | Unified gateway for Model Context Protocol (MCP) servers and tools. It acts as the entry point for policy enforcement, handling requests and routing them through the appropriate authorization patterns |
-| **[Plugins adapter](https://github.com/kagenti/plugins-adapter)** | Adapter for security and safety plugins for Envoy-based gateways |
+- **Skills** — reusable, governed capabilities an agent can draw on, versioned and controlled rather than pasted in
+- **Tools**
+- **Memory**
+- **Knowledge base**
+- **Sandboxes**
 
 ## Quick Start
 
@@ -117,18 +65,21 @@ Kagenti provides a set of components and assets that make it easier to manage AI
 
 ```bash
 # Clone the repository
-git clone https://github.com/kagenti/kagenti.git
-cd kagenti
+git clone https://github.com/rossoctl/rossoctl.git
+cd rossoctl
 
-# Copy and configure secrets
-cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
-# Edit deployments/envs/.secret_values.yaml with your values
+# Check out the latest release
+git checkout v0.7.0
+
+# Copy and configure secrets (optional)
+cp charts/rossoctl/.secrets_template.yaml charts/rossoctl/.secrets.yaml
+# Edit charts/rossoctl/.secrets.yaml with your values
 
 # Deploy to Kind cluster
-scripts/kind/setup-kagenti.sh --with-ui --with-spire --with-agent-sandbox --with-builds
+scripts/kind/setup-rossoctl.sh --with-ui --with-spire --with-agent-sandbox --with-builds
 ```
 
-Use `scripts/kind/setup-kagenti.sh --help` for all available options. For detailed instructions including OpenShift, refer to the [Installation Guide](./docs/install.md).
+Use `scripts/kind/setup-rossoctl.sh --help` for all available options. For detailed instructions including OpenShift, refer to the [Installation Guide](./docs/operate/install-kubernetes.md).
 
 ### Access the UI
 
@@ -136,7 +87,7 @@ Use `scripts/kind/setup-kagenti.sh --help` for all available options. For detail
 # Show service URLs and credentials
 .github/scripts/local-setup/show-services.sh
 
-open http://kagenti-ui.localtest.me:8080
+open http://rossoctl-ui.localtest.me:8080
 # Login with credentials from show-services.sh output
 ```
 
@@ -146,27 +97,31 @@ From the UI you can:
 - Test agents interactively
 - Monitor traces and network traffic
 
-To learn how to deploy agents and MCP tools, follow the **[Weather Agent Demo](https://github.com/kagenti/kagenti-extensions/blob/main/authbridge/demos/weather-agent/demo-ui.md)** — the recommended getting-started tutorial that walks you through deploying an agent and tool via the UI and chatting with it end-to-end. For more demos, see the [full demo list](./docs/demos/README.md).
+To learn how to deploy agents and MCP tools, follow the **[Weather Agent Demo](https://github.com/rossoctl/cortex/blob/main/authbridge/demos/weather-agent/demo-ui.md)** — the recommended getting-started tutorial that walks you through deploying an agent and tool via the UI and chatting with it end-to-end. For more demos, see the [full demo list](./docs/resources.md).
 
 ## Documentation
 
+Full documentation is at [rossoctl.dev/docs](https://rossoctl.dev/docs/).
+
 | Topic | Link |
 |-------|------|
-| **Installation** | [Installation Guide](./docs/install.md) (Kind & OpenShift) |
-| **Components** | [Component Details](./docs/components.md) |
-| **Demos & Tutorials** | [Demo Documentation](./docs/demos/README.md) |
-| **Import Your Own Agent** | [New Agent Guide](./docs/new-agent.md) |
-| **Import Your Own Tool** | [New Tool Guide](./docs/new-tool.md) |
-| **Skills Configuration & Usage** | [Skills Guide](./docs/skills.md) |
-| **Architecture Details** | [Technical Details](./docs/tech-details.md) |
-| **Identity, Security, and Auth Bridge** | [Identity and Auth Bridge](./docs/identity-guide.md) |
-| **Developer Guide** | [Contributing](./docs/dev-guide.md) |
-| **Troubleshooting** | [Troubleshooting Guide](./docs/troubleshooting.md) |
-| **Blog Posts** | [Kagenti Blog](./docs/blogs.md) |
+| **Get started on your laptop** | [Quickstart — laptop](./docs/get-started/laptop.md) (no Kubernetes) |
+| **Get started on Kubernetes** | [Quickstart — Kubernetes](./docs/get-started/kubernetes.md) |
+| **What is ready, what is an experiment** | [Concepts](./docs/concepts/index.md) |
+| **Architecture** | [Architecture](./docs/concepts/core/architecture.md) |
+| **Bring your own agent** | [Bring your own agent](./docs/workloads/bring-your-own-agent.md) |
+| **Deploy agents and tools** | [Deploy an agent](./docs/workloads/deploy-an-agent.md) · [Deploy a tool](./docs/workloads/deploy-a-tool.md) |
+| **Skills** | [Skills](./docs/concepts/experiments/skills.md) |
+| **Identity, security, and AuthBridge** | [Security overview](./docs/security/index.md) · [AuthBridge](./docs/security/authbridge.md) |
+| **Install and operate** | [Install and operate](./docs/operate/index.md) |
+| **CLI, CRDs, glossary** | [Reference](./docs/reference/index.md) |
+| **Demos and examples** | [Resources](./docs/resources.md) |
+| **Troubleshooting** | [Troubleshooting](./docs/operate/troubleshooting.md) |
+| **Developer guide** | [Developer's Guide](./docs/_internal/dev-guide.md) |
 
 ## Supported Protocols
 
-- **[A2A (Agent-to-Agent)](https://google.github.io/A2A)** — Standard protocol for agent communication
+- **[A2A (Agent-to-Agent)](https://a2a-protocol.org/latest/)** — Standard protocol for agent communication
 - **[MCP (Model Context Protocol)](https://modelcontextprotocol.io)** — Protocol for tool/server integration
 
 ## Contributing
@@ -175,14 +130,14 @@ We welcome contributions! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guideline
 
 ## Contact
 
-To reach the maintainer team, email **kagenti-maintainers@googlegroups.com** or join us on [Slack](https://ibm.biz/kagenti-slack).
+To reach the maintainer team, email **rossoctl-maintainers@googlegroups.com** or join us on [Slack](https://ibm.biz/rossoctl-slack).
 
 ## License
 
 [Apache 2.0](./LICENSE)
 
-## QR Code for Kagenti.io
+## QR Code for rossoctl.dev
 
-This QR Code links to <http://kagenti.io>
+This QR Code links to <https://rossoctl.dev>
 
-![Kagenti.io QR Code](./docs/images/Kagenti.QRcode.png)
+<img src="./docs/images/Rossoctl.QRcode.png" alt="rossoctl.dev QR Code" width="200"/>

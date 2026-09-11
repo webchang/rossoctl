@@ -11,7 +11,7 @@
 #   scripts/openshell/deploy-tenant.sh team2 --dry-run
 #   scripts/openshell/deploy-tenant.sh --help
 #
-# Prerequisites: helm, kubectl, Keycloak running, cert-manager installed,
+# Prerequisites: helm, kubectl, Keycloak running,
 #                shared infra deployed (deploy-shared.sh)
 # ============================================================================
 
@@ -152,6 +152,15 @@ INGRESS_TYPE=$(get_ingress_type)
 INGRESS_HOST=$(get_ingress_host)
 OIDC_ISSUER=$(get_keycloak_issuer)
 
+# ── Step 0 (early): Ensure namespace exists before platform-specific setup ──
+# On OpenShift the CA bundle step needs the tenant namespace to already exist.
+if ! kubectl get namespace "$TENANT" &>/dev/null; then
+  log_info "Creating namespace $TENANT (needed for platform setup)..."
+  if ! $DRY_RUN; then
+    kubectl create namespace "$TENANT"
+  fi
+fi
+
 # Kind: resolve Keycloak ClusterIP so we can inject hostAliases into the pod
 # (localtest.me resolves to 127.0.0.1 which is loopback inside the pod)
 KEYCLOAK_CLUSTER_IP=""
@@ -173,6 +182,7 @@ else
   ) | kubectl create configmap "$COMBINED_CA_CM" -n "$TENANT" \
         --from-file=ca-bundle.crt=/dev/stdin --dry-run=client -o yaml | kubectl apply -f - >/dev/null
   EXTRA_HELM_SETS+=("trustedCABundle=$COMBINED_CA_CM")
+  EXTRA_HELM_SETS+=("openshift.enabled=true")
 fi
 
 # Override image tags only when explicitly requested (otherwise use values.yaml defaults)
@@ -180,6 +190,7 @@ if [[ -n "$IMAGE_TAG" ]]; then
   EXTRA_HELM_SETS+=("images.gateway.tag=$IMAGE_TAG")
   EXTRA_HELM_SETS+=("images.computeDriver.tag=$IMAGE_TAG")
   EXTRA_HELM_SETS+=("images.credentialsDriver.tag=$IMAGE_TAG")
+  EXTRA_HELM_SETS+=("supervisorImage.tag=$IMAGE_TAG")
 fi
 
 echo ""
@@ -248,18 +259,17 @@ else
 fi
 echo ""
 
-# ── Step 3: Wait for certificates ──────────────────────────────────────────
-log_info "Step 3: Waiting for cert-manager certificates"
+# ── Step 3: Verify TLS secrets ─────────────────────────────────────────────
+log_info "Step 3: Verifying TLS secrets (created by certgen hook)"
 
 if $DRY_RUN; then
-  echo "  [dry-run] kubectl wait --for=condition=Ready certificate -n $TENANT --all --timeout=${TIMEOUT}s"
+  echo "  [dry-run] kubectl get secret openshell-server-tls openshell-client-tls -n $TENANT"
 else
-  if kubectl get certificate -n "$TENANT" --no-headers 2>/dev/null | grep -q .; then
-    kubectl wait --for=condition=Ready certificate --all \
-      -n "$TENANT" --timeout="${TIMEOUT}s"
-    log_success "All certificates ready"
+  if kubectl get secret openshell-server-tls openshell-client-tls -n "$TENANT" &>/dev/null; then
+    log_success "TLS secrets present"
   else
-    log_warn "No certificates found in namespace $TENANT (may be handled by Helm --wait)"
+    log_error "TLS secrets missing — certgen hook may have failed"
+    exit 1
   fi
 fi
 echo ""
@@ -288,7 +298,7 @@ if $DEPLOY_AGENTS; then
   else
     # Kind: Set webhook to Ignore so agents deploy without AuthBridge
     log_warn "PoC: Setting webhook failurePolicy=Ignore (Kind only)"
-    kubectl get mutatingwebhookconfiguration -o name 2>/dev/null | grep kagenti | while read -r webhook; do
+    kubectl get mutatingwebhookconfiguration -o name 2>/dev/null | grep rossoctl | while read -r webhook; do
       kubectl patch "$webhook" --type='json' \
         -p='[{"op":"replace","path":"/webhooks/0/failurePolicy","value":"Ignore"}]' 2>/dev/null || true
     done
@@ -298,9 +308,9 @@ if $DEPLOY_AGENTS; then
   run_cmd kubectl create serviceaccount openshell-supervisor -n "$TENANT" \
     --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
 
-  # Create kagenti-skills ConfigMap
-  run_cmd kubectl create configmap kagenti-skills -n "$TENANT" \
-    --from-literal=skills.json='{"version":"1.0","source":"kagenti/.claude/skills/","skills":[{"name":"review","type":"claude-code-skill"},{"name":"rca","type":"claude-code-skill"},{"name":"k8s:health","type":"claude-code-skill"},{"name":"k8s:pods","type":"claude-code-skill"},{"name":"k8s:logs","type":"claude-code-skill"},{"name":"tdd:kind","type":"claude-code-skill"},{"name":"tdd:hypershift","type":"claude-code-skill"},{"name":"github:pr-review","type":"claude-code-skill"},{"name":"security-review","type":"claude-code-skill"}]}' \
+  # Create rossoctl-skills ConfigMap
+  run_cmd kubectl create configmap rossoctl-skills -n "$TENANT" \
+    --from-literal=skills.json='{"version":"1.0","source":"rossoctl/.claude/skills/","skills":[{"name":"review","type":"claude-code-skill"},{"name":"rca","type":"claude-code-skill"},{"name":"k8s:health","type":"claude-code-skill"},{"name":"k8s:pods","type":"claude-code-skill"},{"name":"k8s:logs","type":"claude-code-skill"},{"name":"tdd:kind","type":"claude-code-skill"},{"name":"tdd:hypershift","type":"claude-code-skill"},{"name":"security-review","type":"claude-code-skill"}]}' \
     --dry-run=client -o yaml | kubectl apply -f - 2>&1 | grep -v "^Warning:" || true
 
   # Apply agent manifests and policy ConfigMaps
@@ -342,7 +352,7 @@ if $DEPLOY_AGENTS; then
   if ! $DRY_RUN; then
     sleep 5
     log_info "Waiting for agent rollouts..."
-    for deploy in $(kubectl get deploy -n "$TENANT" -l kagenti.io/type=agent -o name 2>/dev/null); do
+    for deploy in $(kubectl get deploy -n "$TENANT" -l rossoctl.io/type=agent -o name 2>/dev/null); do
       case "$deploy" in
         *nemoclaw*) kubectl rollout status "$deploy" -n "$TENANT" --timeout=60s 2>/dev/null || \
                       log_warn "$deploy not ready (NemoClaw image pending)" ;;

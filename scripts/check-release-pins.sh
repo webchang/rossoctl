@@ -15,12 +15,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-CHARTS_DIR="$REPO_ROOT/charts/kagenti"
+CHARTS_DIR="$REPO_ROOT/charts/rossoctl"
 VALUES_FILE="$CHARTS_DIR/values.yaml"
 CHART_FILE="$CHARTS_DIR/Chart.yaml"
 TEMPLATES_DIR="$CHARTS_DIR/templates"
 
-DEPS_CHARTS_DIR="$REPO_ROOT/charts/kagenti-deps"
+DEPS_CHARTS_DIR="$REPO_ROOT/charts/rossoctl-deps"
 DEPS_VALUES_FILE="$DEPS_CHARTS_DIR/values.yaml"
 
 # ---------------------------------------------------------------------------
@@ -29,6 +29,7 @@ DEPS_VALUES_FILE="$DEPS_CHARTS_DIR/values.yaml"
 
 JSON_MODE=false
 VERIFY_IMAGES=false
+RENDER=false
 
 usage() {
     cat <<EOF
@@ -39,6 +40,10 @@ Validate that all image tags and chart dependencies are pinned for release.
 Options:
   --json            Output results as JSON (for CI summary consumption)
   --verify-images   Check that pinned GHCR images exist via docker manifest inspect
+  --render          Render the chart (helm template, incl. subcharts) and fail on any
+                    floating image tag (:latest/:main/:master). Catches tags inside
+                    dependency subcharts that the values/template greps cannot see
+                    (rossoctl/rossoctl#2389). Requires helm.
   -h, --help        Show this help message
 EOF
     exit 0
@@ -48,6 +53,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --json)           JSON_MODE=true;     shift ;;
         --verify-images)  VERIFY_IMAGES=true; shift ;;
+        --render)         RENDER=true;        shift ;;
         -h|--help)        usage ;;
         *)                echo "Unknown option: $1"; usage ;;
     esac
@@ -162,12 +168,12 @@ is_unpinned_version() {
 # ---------------------------------------------------------------------------
 
 if [[ ! -f "$VALUES_FILE" ]]; then
-    add_error "charts/kagenti/values.yaml" 0 "file not found"
+    add_error "charts/rossoctl/values.yaml" 0 "file not found"
 else
     matches=$(grep -Fn 'tag: latest' "$VALUES_FILE" || true)
 
     if [[ -z "$matches" ]]; then
-        add_ok "charts/kagenti/values.yaml" "no tag: latest found"
+        add_ok "charts/rossoctl/values.yaml" "no tag: latest found"
     else
         while IFS= read -r match; do
             if [[ -z "$match" ]]; then
@@ -175,7 +181,7 @@ else
             fi
 
             line_number="${match%%:*}"
-            add_error "charts/kagenti/values.yaml" "$line_number" "tag: latest"
+            add_error "charts/rossoctl/values.yaml" "$line_number" "tag: latest"
         done <<< "$matches"
     fi
 fi
@@ -188,12 +194,12 @@ fi
 # ---------------------------------------------------------------------------
 
 if [[ ! -d "$TEMPLATES_DIR" ]]; then
-    add_error "charts/kagenti/templates/" 0 "directory not found"
+    add_error "charts/rossoctl/templates/" 0 "directory not found"
 else
     matches=$(grep -rFn ':latest' "$TEMPLATES_DIR" || true)
 
     if [[ -z "$matches" ]]; then
-        add_ok "charts/kagenti/templates/" "no :latest found"
+        add_ok "charts/rossoctl/templates/" "no :latest found"
     else
         while IFS= read -r match; do
             if [[ -z "$match" ]]; then
@@ -206,7 +212,7 @@ else
             line_number="${rest%%:*}"
             filename=$(basename "$filepath")
 
-            add_error "charts/kagenti/templates/${filename}" "$line_number" ":latest"
+            add_error "charts/rossoctl/templates/${filename}" "$line_number" ":latest"
         done <<< "$matches"
     fi
 fi
@@ -319,7 +325,7 @@ parse_chart_dependencies_with_bash() {
 }
 
 if [[ ! -f "$CHART_FILE" ]]; then
-    add_error "charts/kagenti/Chart.yaml" 0 "file not found"
+    add_error "charts/rossoctl/Chart.yaml" 0 "file not found"
 else
     if command -v yq >/dev/null 2>&1; then
         dep_entries=$(parse_chart_dependencies_with_yq || true)
@@ -344,13 +350,13 @@ else
                     issue="unpinned dependency version: ${version}"
                 fi
 
-                add_error "charts/kagenti/Chart.yaml" "${line_number:-0}" "$issue"
+                add_error "charts/rossoctl/Chart.yaml" "${line_number:-0}" "$issue"
             fi
         done <<< "$dep_entries"
     fi
 
     if [[ "$deps_ok" == "true" ]]; then
-        add_ok "charts/kagenti/Chart.yaml" "all dependency versions pinned"
+        add_ok "charts/rossoctl/Chart.yaml" "all dependency versions pinned"
     fi
 fi
 
@@ -364,7 +370,7 @@ fi
 
 if [[ -f "$CHART_FILE" ]] && [[ -f "$VALUES_FILE" ]]; then
     if ! command -v yq >/dev/null 2>&1; then
-        add_warning "charts/kagenti/Chart.yaml" \
+        add_warning "charts/rossoctl/Chart.yaml" \
             "yq not found — skipping Chart.yaml version/appVersion consistency check"
     else
         chart_version=$(yq eval '.version' "$CHART_FILE" 2>/dev/null || echo "")
@@ -376,17 +382,17 @@ if [[ -f "$CHART_FILE" ]] && [[ -f "$VALUES_FILE" ]]; then
 
         if [[ -n "$platform_tag_stripped" ]] && [[ "$platform_tag_stripped" != "null" ]]; then
             if [[ "$chart_version" != "$platform_tag_stripped" ]]; then
-                add_error "charts/kagenti/Chart.yaml" 0 \
+                add_error "charts/rossoctl/Chart.yaml" 0 \
                     "version ($chart_version) does not match image tags ($platform_tag_stripped) — run scripts/pin-release-tags.sh"
             else
-                add_ok "charts/kagenti/Chart.yaml" "version ($chart_version) matches image tags"
+                add_ok "charts/rossoctl/Chart.yaml" "version ($chart_version) matches image tags"
             fi
 
             if [[ "$chart_app_version" != "$platform_tag_stripped" ]]; then
-                add_error "charts/kagenti/Chart.yaml" 0 \
+                add_error "charts/rossoctl/Chart.yaml" 0 \
                     "appVersion ($chart_app_version) does not match image tags ($platform_tag_stripped) — run scripts/pin-release-tags.sh"
             else
-                add_ok "charts/kagenti/Chart.yaml" "appVersion ($chart_app_version) matches image tags"
+                add_ok "charts/rossoctl/Chart.yaml" "appVersion ($chart_app_version) matches image tags"
             fi
         fi
     fi
@@ -397,23 +403,23 @@ fi
 # ---------------------------------------------------------------------------
 
 if [[ -f "$CHARTS_DIR/Chart.lock" ]]; then
-    add_ok "charts/kagenti/Chart.lock" "present"
+    add_ok "charts/rossoctl/Chart.lock" "present"
 else
-    add_warning "charts/kagenti/Chart.lock" \
+    add_warning "charts/rossoctl/Chart.lock" \
         "not found — run helm dependency update if you have local dependencies"
 fi
 
 # ---------------------------------------------------------------------------
-# Check 5: No "tag: latest" in kagenti-deps values.yaml
+# Check 5: No "tag: latest" in rossoctl-deps values.yaml
 # ---------------------------------------------------------------------------
 
 if [[ ! -f "$DEPS_VALUES_FILE" ]]; then
-    add_warning "charts/kagenti-deps/values.yaml" "file not found (skipping)"
+    add_warning "charts/rossoctl-deps/values.yaml" "file not found (skipping)"
 else
     matches=$(grep -Fn 'tag: latest' "$DEPS_VALUES_FILE" || true)
 
     if [[ -z "$matches" ]]; then
-        add_ok "charts/kagenti-deps/values.yaml" "no tag: latest found"
+        add_ok "charts/rossoctl-deps/values.yaml" "no tag: latest found"
     else
         while IFS= read -r match; do
             if [[ -z "$match" ]]; then
@@ -421,21 +427,21 @@ else
             fi
 
             line_number="${match%%:*}"
-            add_error "charts/kagenti-deps/values.yaml" "$line_number" "tag: latest"
+            add_error "charts/rossoctl-deps/values.yaml" "$line_number" "tag: latest"
         done <<< "$matches"
     fi
 fi
 
 # ---------------------------------------------------------------------------
-# Check 6: kagenti-deps images built by this repo are pinned consistently
+# Check 6: rossoctl-deps images built by this repo are pinned consistently
 #
-# The spiffe-idp-setup image lives in kagenti-deps but is built by this repo.
+# The spiffe-idp-setup image lives in rossoctl-deps but is built by this repo.
 # Its tag must not drift from the main chart's platform image tags.
 # ---------------------------------------------------------------------------
 
 if [[ -f "$DEPS_VALUES_FILE" ]]; then
     if ! command -v yq >/dev/null 2>&1; then
-        add_warning "charts/kagenti-deps/values.yaml" \
+        add_warning "charts/rossoctl-deps/values.yaml" \
             "yq not found — skipping spiffeIdp tag consistency check"
     else
         spiffe_tag=$(yq eval '.spiffeIdp.image.tag' "$DEPS_VALUES_FILE" 2>/dev/null || echo "")
@@ -446,11 +452,75 @@ if [[ -f "$DEPS_VALUES_FILE" ]]; then
 
             if [[ -n "$platform_tag" ]] && [[ "$platform_tag" != "null" ]] \
                && [[ "$spiffe_tag" != "$platform_tag" ]]; then
-                add_error "charts/kagenti-deps/values.yaml" 0 \
+                add_error "charts/rossoctl-deps/values.yaml" 0 \
                     "spiffeIdp.image.tag ($spiffe_tag) differs from platform tag ($platform_tag) — run scripts/pin-release-tags.sh"
             else
-                add_ok "charts/kagenti-deps/values.yaml" \
+                add_ok "charts/rossoctl-deps/values.yaml" \
                     "spiffeIdp.image.tag ($spiffe_tag) consistent with platform"
+            fi
+        fi
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Check 6c (opt-in, --render): No floating image tags in the RENDERED chart
+#
+# Checks 1-2 only see rossoctl's own values.yaml/templates. They cannot see a
+# floating tag inside a dependency subchart (e.g. operator-chart's AuthBridge
+# images), which is how a :latest shipped invisibly at an earlier rc
+# (rossoctl/rossoctl#2389). Rendering the full chart (subcharts included) and
+# grepping the output for any registry ref ending in :latest/:main/:master
+# closes that gap. Opt-in because it needs helm + fetching OCI dependencies.
+# ---------------------------------------------------------------------------
+
+if [[ "$RENDER" == "true" ]]; then
+    render_label="charts/rossoctl (rendered)"
+    if ! command -v helm >/dev/null 2>&1; then
+        add_error "$render_label" 0 "--render requires helm, which is not installed"
+    else
+        # Isolate render artifacts in a private temp dir: --render is documented
+        # for local use too, where fixed /tmp names let concurrent runs clobber
+        # each other and leave a rendered manifest lingering on a shared host.
+        crp_tmp=$(mktemp -d)
+        trap 'rm -rf "$crp_tmp"' EXIT
+        # Build dependencies so subcharts are rendered too. Public OCI, no auth.
+        if ! helm dependency build "$CHARTS_DIR" >"$crp_tmp/helm-dep.log" 2>&1; then
+            add_error "$render_label" 0 "helm dependency build failed (cannot render subcharts) — see output"
+            cat "$crp_tmp/helm-dep.log" >&2 || true
+        else
+            # openshift=false avoids the OpenShift-only required-value guards;
+            # image references (incl. subcharts) render regardless.
+            if ! helm template rossoctl "$CHARTS_DIR" --set openshift=false \
+                    > "$crp_tmp/render.yaml" 2>"$crp_tmp/render.err"; then
+                add_error "$render_label" 0 "helm template failed — see output"
+                cat "$crp_tmp/render.err" >&2 || true
+            else
+                # Match a container-registry ref ending in a floating tag, in any
+                # field (image:, or a subchart ConfigMap value like authbridge:).
+                # The host is a generic "<name>.<tld>[:port]/..." pattern rather
+                # than an allowlist, so a future subchart pulling from gcr.io, ECR
+                # (*.dkr.ecr.*.amazonaws.com), or mcr.microsoft.com is covered too
+                # — that "image source the check can't see" class is what #2389 was.
+                # Matched case-insensitively (-i) so :LATEST is caught as well.
+                # The trailing [^0-9A-Za-z._-] boundary is deliberate: it excludes
+                # suffixed tags like :latest-arm64 / :main-abc123, which are
+                # effectively pinned. Version-pinned (:vX.Y.Z) and digest
+                # (@sha256:) refs never match the alternation.
+                float_re='[a-z0-9.-]+\.[a-z]{2,}(:[0-9]+)?/[^[:space:]"'\'']*:(latest|main|master)([^0-9A-Za-z._-]|$)'
+                matches=$(grep -niE "$float_re" "$crp_tmp/render.yaml" || true)
+                if [[ -z "$matches" ]]; then
+                    add_ok "$render_label" "no floating image tags in rendered manifests (subcharts included)"
+                else
+                    while IFS= read -r m; do
+                        [[ -z "$m" ]] && continue
+                        ln="${m%%:*}"
+                        ref=$(printf '%s' "$m" | grep -oiE "$float_re" | head -1)
+                        # Drop the trailing delimiter the boundary group captured
+                        # (e.g. a closing quote) so the reported ref reads clean.
+                        ref="${ref%[!0-9A-Za-z._-]}"
+                        add_error "$render_label" "$ln" "floating image tag in rendered output: ${ref}"
+                    done <<< "$matches"
+                fi
             fi
         fi
     fi

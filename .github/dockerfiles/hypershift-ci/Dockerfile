@@ -4,18 +4,18 @@
 # Uses hypershift-automation ansible playbooks for cluster lifecycle management.
 #
 # BUILD:
-#   docker build -t ghcr.io/kagenti/hypershift-ci:latest .
+#   docker build -t ghcr.io/rossoctl/hypershift-ci:latest .
 #
 # USAGE:
 #   docker run -v ~/.pullsecret.json:/home/ci/.pullsecret.json \
 #     -e KUBECONFIG=/tmp/mgmt -e AWS_ACCESS_KEY_ID=... -e AWS_SECRET_ACCESS_KEY=... \
-#     ghcr.io/kagenti/hypershift-ci:latest \
+#     ghcr.io/rossoctl/hypershift-ci:latest \
 #     ansible-playbook site.yml -e create=true -e "additional_tags=ManagedBy=hypershift-ci" ...
 #
 # SECURITY: Container runs as non-root user (UID 1001) by default
 #
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.7@sha256:b9b10f42d7eba7ad4a6d5ef26b7d34fdc892b2ffe59b8d0372ec884008569eb6
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.7@sha256:12db9874bd753eb98b1ab3d840e75de5d6842ac0604fbd68c012adefe97140be
 
 # === PINNED VERSIONS ===
 # Update these to upgrade tooling
@@ -109,5 +109,5 @@ ENTRYPOINT ["/bin/bash"]
 # Labels
 LABEL org.opencontainers.image.title="HyperShift CI"
 LABEL org.opencontainers.image.description="Container for HyperShift cluster lifecycle management in CI"
-LABEL org.opencontainers.image.source="https://github.com/kagenti/kagenti"
-LABEL org.opencontainers.image.vendor="Kagenti"
+LABEL org.opencontainers.image.source="https://github.com/rossoctl/rossoctl"
+LABEL org.opencontainers.image.vendor="Rossoctl"

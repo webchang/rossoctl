@@ -23,7 +23,7 @@ on:
       - 'deployments/openshell/**'
       - 'charts/openshell/**'
       - 'scripts/openshell/**'
-      - 'kagenti/tests/e2e/openshell/**'
+      - 'rossoctl/tests/e2e/openshell/**'
       - '.github/scripts/local-setup/openshell-full-test.sh'
       - '.github/scripts/local-setup/openshell-build-agents.sh'
       - '.github/workflows/e2e-openshell-kind.yaml'
@@ -33,7 +33,7 @@ on:
       - 'deployments/openshell/**'
       - 'charts/openshell/**'
       - 'scripts/openshell/**'
-      - 'kagenti/tests/e2e/openshell/**'
+      - 'rossoctl/tests/e2e/openshell/**'
       - '.github/scripts/local-setup/openshell-full-test.sh'
       - '.github/scripts/local-setup/openshell-build-agents.sh'
       - '.github/workflows/e2e-openshell-kind.yaml'
@@ -107,17 +107,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: authorize
     if: needs.authorize.outputs.authorized == 'true'
-    timeout-minutes: 45
+    timeout-minutes: 55  # Observed worst-case: ~44min (deploy ~27min + tests ~8min + overhead)
     continue-on-error: true
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           ref: ${{ needs.authorize.outputs.pr_sha || github.sha }}
 
       - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: '3.12'
 
@@ -125,7 +125,7 @@ jobs:
         uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d  # v5.1.0
 
       - name: Install Helm v3
-        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5.0.0
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5.0.1
         with:
           version: 'v3.17.0'
 
@@ -138,10 +138,10 @@ jobs:
           kind version
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4.0.0
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e  # v4.3.0
 
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
 
       - name: Free up disk space
         run: bash .github/scripts/common/05-free-disk-space.sh
@@ -165,15 +165,15 @@ jobs:
           PLATFORM: kind
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_TOKEN: ${{ github.token }}
-          OPENSHELL_LLM_MODELS: "llama-scout-17b,deepseek-r1"
+          OPENSHELL_LLM_MODELS: "Qwen3.6-35B-A3B"
 
       - name: Collect logs on failure
         if: failure()
         run: |
-          mkdir -p /tmp/kagenti/ci-logs
-          kubectl get pods -A > /tmp/kagenti/ci-logs/all-pods.txt 2>&1 || true
-          kubectl logs -n team1 openshell-server-0 --tail=100 > /tmp/kagenti/ci-logs/gateway.log 2>&1 || true
-          kubectl get events -n team1 --sort-by='.lastTimestamp' > /tmp/kagenti/ci-logs/team1-events.txt 2>&1 || true
+          mkdir -p /tmp/rossoctl/ci-logs
+          kubectl get pods -A > /tmp/rossoctl/ci-logs/all-pods.txt 2>&1 || true
+          kubectl logs -n team1 openshell-server-0 --tail=100 > /tmp/rossoctl/ci-logs/gateway.log 2>&1 || true
+          kubectl get events -n team1 --sort-by='.lastTimestamp' > /tmp/rossoctl/ci-logs/team1-events.txt 2>&1 || true
 
       - name: Upload test results
         if: always()
@@ -182,4 +182,4 @@ jobs:
           name: openshell-kind-e2e-results
           path: |
             test-results/
-            /tmp/kagenti/
+            /tmp/rossoctl/

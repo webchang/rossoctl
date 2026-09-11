@@ -53,7 +53,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: List dependency manifests
         run: |
@@ -136,7 +136,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install shellcheck
         run: sudo apt-get install -y shellcheck
@@ -182,10 +182,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
 
       - name: Install yamllint
         run: uv tool install yamllint==1.38.0
@@ -244,10 +244,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Set up Helm
-        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5.0.0
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5.0.1
         with:
           version: 'v3.14.0'
 
@@ -294,15 +294,15 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
 
       - name: Install Bandit
         run: uv tool install "bandit[toml]==1.9.4"
@@ -312,16 +312,16 @@ jobs:
           echo "=== Bandit Python Security Scan ==="
           echo ""
 
-          # Check if kagenti directory exists
-          if [ ! -d "kagenti" ]; then
-            echo "No kagenti/ directory found, skipping Python security scan"
+          # Check if rossoctl directory exists
+          if [ ! -d "rossoctl" ]; then
+            echo "No rossoctl/ directory found, skipping Python security scan"
             exit 0
           fi
 
           # Run Bandit - scan main code (excluding examples which may have intentional patterns)
           # First pass: HIGH severity only on main code - this WILL fail the build
           echo "--- Checking for HIGH severity issues in main code ---"
-          HIGH_ISSUES=$(bandit -r kagenti/ \
+          HIGH_ISSUES=$(bandit -r rossoctl/ \
             --severity-level high \
             --confidence-level high \
             --exclude '**/tests/*,**/.venv/*,**/node_modules/*,**/examples/*' \
@@ -329,7 +329,7 @@ jobs:
 
           if [ "$HIGH_ISSUES" -gt 0 ]; then
             echo "Found $HIGH_ISSUES HIGH severity issues in main code:"
-            bandit -r kagenti/ \
+            bandit -r rossoctl/ \
               --severity-level high \
               --confidence-level high \
               --exclude '**/tests/*,**/.venv/*,**/node_modules/*,**/examples/*' \
@@ -342,7 +342,7 @@ jobs:
           # Second pass: Show all issues (including examples) for visibility
           echo ""
           echo "--- Full scan (informational) ---"
-          bandit -r kagenti/ \
+          bandit -r rossoctl/ \
             --severity-level medium \
             --confidence-level medium \
             --exclude '**/tests/*,**/.venv/*,**/node_modules/*' \
@@ -361,7 +361,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Find Dockerfiles
         id: find-dockerfiles
@@ -378,7 +378,7 @@ jobs:
 
       - name: Run Hadolint
         if: steps.find-dockerfiles.outputs.has_dockerfiles == 'true'
-        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5  # v3.3.0
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387  # v3.5.0
         with:
           dockerfile: "**/Dockerfile*"
           recursive: true
@@ -399,7 +399,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       # Step 1: Show all dependency vulnerabilities (informational)
       - name: Show all dependency vulnerabilities (informational)
@@ -436,7 +436,7 @@ jobs:
           scan-ref: '.'
           severity: 'CRITICAL,HIGH,MEDIUM'
           # Skip examples directory - contains intentional simplified configs for demos
-          skip-dirs: 'kagenti/examples'
+          skip-dirs: 'rossoctl/examples'
           # Use .trivyignore for documented exceptions (base images, CI RBAC)
           trivyignores: '.trivyignore'
           # Use trivy.yaml for trusted registries and other config
@@ -449,7 +449,7 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
           scan-type: 'config'
-          scan-ref: 'kagenti/examples'
+          scan-ref: 'rossoctl/examples'
           severity: 'CRITICAL,HIGH,MEDIUM'
           # Examples are informational only - don't fail the build
           exit-code: '0'
@@ -470,10 +470,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Run actionlint
-        uses: reviewdog/action-actionlint@6fb7acc99f4a1008869fa8a0f09cfca740837d9d  # v1.72.0
+        uses: reviewdog/action-actionlint@d290e336d5a743810aef4404f757dc862276d2ae  # v1.73.4
         with:
           fail_on_error: true
           # Only report issues on lines changed in the PR (not pre-existing)
@@ -491,20 +491,20 @@ jobs:
       security-events: write
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@68bde559dea0fdcac2102bfdf6230c5f70eb485e  # v4
+        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938  # v4
         with:
           languages: python
           # Use security-extended queries for more thorough analysis
           queries: security-extended
 
       - name: Autobuild
-        uses: github/codeql-action/autobuild@68bde559dea0fdcac2102bfdf6230c5f70eb485e  # v4
+        uses: github/codeql-action/autobuild@cdf488f595d80d6e07e03d4674febd5ab45fa938  # v4
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@68bde559dea0fdcac2102bfdf6230c5f70eb485e  # v4
+        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938  # v4
         with:
           category: "/language:python"
 
@@ -514,7 +514,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Check for unpinned GitHub Actions
         id: pinning-check
@@ -537,7 +537,7 @@ jobs:
             echo "To pin an action, replace:"
             echo "  uses: actions/checkout@v6"
             echo "With:"
-            echo "  uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6"
+            echo "  uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v6"
             echo ""
             echo "Find SHAs at: https://github.com/<owner>/<repo>/releases"
             echo ""
@@ -588,7 +588,7 @@ jobs:
   #   scorecard:
   #     runs-on: ubuntu-latest
   #     steps:
-  #       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+  #       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
   #         with:
   #           persist-credentials: false
   #       - uses: ossf/scorecard-action@v2

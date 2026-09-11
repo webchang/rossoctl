@@ -5,7 +5,7 @@
 #   - tx-e2e-tool: A simple HTTP echo server (acts as MCP tool)
 #   - tx-e2e-agent: A simple HTTP server (acts as agent calling the tool)
 #
-# Both get kagenti sidecars injected by the webhook (namespace is kagenti-enabled).
+# Both get rossoctl sidecars injected by the webhook (namespace is rossoctl-enabled).
 set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 
@@ -22,7 +22,6 @@ metadata:
   name: tx-e2e-tool
   labels:
     app: tx-e2e-tool
-    kagenti.io/type: tool
 spec:
   replicas: 1
   selector:
@@ -32,7 +31,6 @@ spec:
     metadata:
       labels:
         app: tx-e2e-tool
-        kagenti.io/type: tool
     spec:
       serviceAccountName: tx-e2e-tool
       containers:
@@ -114,7 +112,6 @@ metadata:
   name: tx-e2e-agent
   labels:
     app: tx-e2e-agent
-    kagenti.io/type: agent
 spec:
   replicas: 1
   selector:
@@ -124,7 +121,6 @@ spec:
     metadata:
       labels:
         app: tx-e2e-agent
-        kagenti.io/type: agent
     spec:
       serviceAccountName: tx-e2e-agent
       containers:
@@ -217,7 +213,7 @@ EOF
 # --- AgentRuntime CRs ---
 log_info "Creating AgentRuntime CRs"
 cat <<EOF | kubectl apply -n "$TX_NAMESPACE" -f -
-apiVersion: agent.kagenti.dev/v1alpha1
+apiVersion: agent.rossoctl.dev/v1alpha1
 kind: AgentRuntime
 metadata:
   name: tx-e2e-tool-runtime
@@ -228,7 +224,7 @@ spec:
     kind: Deployment
     name: tx-e2e-tool
 ---
-apiVersion: agent.kagenti.dev/v1alpha1
+apiVersion: agent.rossoctl.dev/v1alpha1
 kind: AgentRuntime
 metadata:
   name: tx-e2e-agent-runtime
@@ -255,7 +251,7 @@ done
 # Wait for keycloak client credentials to be created by the operator
 log_info "Waiting for keycloak client credentials..."
 for i in $(seq 1 60); do
-  CRED_COUNT=$(kubectl get secrets -n "$TX_NAMESPACE" -o name 2>/dev/null | grep -c kagenti-keycloak-client-credentials || echo "0")
+  CRED_COUNT=$(kubectl get secrets -n "$TX_NAMESPACE" -o name 2>/dev/null | grep -c rossoctl-keycloak-client-credentials || echo "0")
   if [[ "$CRED_COUNT" -ge 2 ]]; then
     log_success "Found $CRED_COUNT keycloak credential secrets"
     break

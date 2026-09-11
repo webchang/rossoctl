@@ -37,7 +37,7 @@ submits reviews after user approval.
 
 ## Prerequisites
 
-- `scan-report.md` and `plan.md` exist in `/tmp/kagenti/orchestrate/<target>/`
+- `scan-report.md` and `plan.md` exist in `/tmp/rossoctl/orchestrate/<target>/`
 - Phases 2-6 are complete (or at least the phases that were planned)
 - PRs are open on the target repo
 
@@ -64,7 +64,7 @@ Record PR metadata in a working table:
 
 ## Phase 2: Per-PR Review
 
-For each PR, run the `github:pr-review` checklist:
+For each PR, run the `github-pr-review` checklist (import via `/plugin install github-pr-review@rossoctl-agent-skills` for the full workflow, or follow the inline checklist below):
 
 ### Commit Conventions
 - Signed-off (`Signed-off-by:` trailer present)
@@ -210,12 +210,12 @@ Update `phase-status.md` when complete:
 
 ```bash
 # Update phase-status.md
-sed -i '' 's/| review .*/| review | complete | -- | YYYY-MM-DD |/' /tmp/kagenti/orchestrate/<target>/phase-status.md
+sed -i '' 's/| review .*/| review | complete | -- | YYYY-MM-DD |/' /tmp/rossoctl/orchestrate/<target>/phase-status.md
 ```
 
 ## Related Skills
 
 - `orchestrate` -- Parent router
-- `github:pr-review` -- Per-PR review checklist (invoked during Phase 2)
+- `github-pr-review` -- Per-PR review checklist (invoked during Phase 2). Not bundled in this repo; import via `/plugin install github-pr-review@rossoctl-agent-skills`.
 - `orchestrate:scan` -- Scan report used for cross-referencing
 - `orchestrate:plan` -- Plan used to verify all phases were executed

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# pin-release-tags.sh — Pin all kagenti-built image tags to a release version.
+# pin-release-tags.sh — Pin all rossoctl-built image tags to a release version.
 #
-# Updates image tags across both charts/kagenti/ and charts/kagenti-deps/ so
+# Updates image tags across both charts/rossoctl/ and charts/rossoctl-deps/ so
 # that a tagged release checkout always pulls the correct images when installed
-# from source (via the setup-kagenti.sh installers).
+# from source (via the setup-rossoctl.sh installers).
 #
 # Usage:
 #   ./scripts/pin-release-tags.sh v0.6.0-rc.6
@@ -19,11 +19,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-KAGENTI_VALUES="$REPO_ROOT/charts/kagenti/values.yaml"
-KAGENTI_DEPS_VALUES="$REPO_ROOT/charts/kagenti-deps/values.yaml"
-# Only kagenti Chart.yaml is versioned here; kagenti-deps is a dependency chart
+ROSSOCTL_VALUES="$REPO_ROOT/charts/rossoctl/values.yaml"
+ROSSOCTL_DEPS_VALUES="$REPO_ROOT/charts/rossoctl-deps/values.yaml"
+# Only rossoctl Chart.yaml is versioned here; rossoctl-deps is a dependency chart
 # whose version is managed independently via its own release cadence.
-KAGENTI_CHART="$REPO_ROOT/charts/kagenti/Chart.yaml"
+ROSSOCTL_CHART="$REPO_ROOT/charts/rossoctl/Chart.yaml"
 
 DRY_RUN=false
 VERIFY_IMAGES=false
@@ -36,7 +36,7 @@ usage() {
     cat <<EOF
 Usage: $(basename "$0") VERSION [OPTIONS]
 
-Pin all kagenti-built container image tags to VERSION across both Helm charts.
+Pin all rossoctl-built container image tags to VERSION across both Helm charts.
 
 Arguments:
   VERSION             The release version tag (e.g., v0.6.0-rc.6, v0.7.0-alpha.1)
@@ -48,16 +48,11 @@ Options:
   --skip-chart-version   Do NOT update Chart.yaml version/appVersion
   -h, --help             Show this help message
 
-Images pinned (charts/kagenti/values.yaml):
-  - ui.frontend.tag
-  - ui.backend.tag
-  - uiOAuthSecret.tag
-  - agentOAuthSecret.tag
-  - apiOAuthSecret.tag
-  - mlflowOAuthSecret.tag
-
-Images pinned (charts/kagenti-deps/values.yaml):
-  - spiffeIdp.image.tag
+Images pinned:
+  Every ghcr.io/rossoctl/rossoctl/* image found in charts/rossoctl/values.yaml
+  and charts/rossoctl-deps/values.yaml is pinned (the set is derived from the
+  values files, so new rossoctl images are covered automatically). Run with
+  --dry-run to see the exact list for the current tree.
 
 EOF
     exit 0
@@ -112,13 +107,13 @@ if ! command -v yq >/dev/null 2>&1; then
     exit 2
 fi
 
-if [[ ! -f "$KAGENTI_VALUES" ]]; then
-    echo "error: $KAGENTI_VALUES not found (run from repo root)" >&2
+if [[ ! -f "$ROSSOCTL_VALUES" ]]; then
+    echo "error: $ROSSOCTL_VALUES not found (run from repo root)" >&2
     exit 1
 fi
 
-if [[ ! -f "$KAGENTI_DEPS_VALUES" ]]; then
-    echo "error: $KAGENTI_DEPS_VALUES not found (run from repo root)" >&2
+if [[ ! -f "$ROSSOCTL_DEPS_VALUES" ]]; then
+    echo "error: $ROSSOCTL_DEPS_VALUES not found (run from repo root)" >&2
     exit 1
 fi
 
@@ -126,21 +121,42 @@ fi
 # Image registry and paths
 # ---------------------------------------------------------------------------
 
-REGISTRY="ghcr.io/kagenti/kagenti"
+REGISTRY="ghcr.io/rossoctl/rossoctl"
 
-# Map of yq paths to image names. These are ALL images built by this repo's
-# build.yaml CI workflow and must be kept in sync with the matrix there.
+# The set of pinnable images is derived dynamically from the chart values so
+# that ANY ghcr.io/rossoctl/rossoctl/* image is pinned automatically — a
+# hardcoded key list silently skipped new images (phoenix-oauth-secret and the
+# charts/rossoctl copy of spiffe-idp-setup were left stale; rossoctl/rossoctl#2401).
 #
-# Format: "values-file|yq-path|image-name"
-PINNABLE_IMAGES=(
-    "$KAGENTI_VALUES|.ui.frontend.tag|ui-v2"
-    "$KAGENTI_VALUES|.ui.backend.tag|backend"
-    "$KAGENTI_VALUES|.uiOAuthSecret.tag|ui-oauth-secret"
-    "$KAGENTI_VALUES|.agentOAuthSecret.tag|agent-oauth-secret"
-    "$KAGENTI_VALUES|.apiOAuthSecret.tag|api-oauth-secret"
-    "$KAGENTI_VALUES|.mlflowOAuthSecret.tag|mlflow-oauth-secret"
-    "$KAGENTI_DEPS_VALUES|.spiffeIdp.image.tag|spiffe-idp-setup"
-)
+# For every string value matching the registry, we pin its sibling `tag`. This
+# handles both layouts in the values files by replacing the last path segment
+# with "tag":
+#   flat:    image: <ref>            + tag: <ver>   -> <parent>.tag
+#   nested:  image: { repository: <ref>, tag: <ver> } -> <parent>.image.tag
+# Format of each derived entry: "values-file|yq-path|image-name"
+#
+# By design, any layout OTHER than these two aborts the run (fail-loud, never a
+# silent skip): an image carrying an inline tag with no sibling `tag:` key yields
+# a `.tag` path that doesn't exist and the pin loop exits with an error; likewise
+# a values key containing a literal "." breaks the `join(".")` path. Both are
+# absent from these charts today — if one is introduced, extend this deriver
+# rather than let it half-pin the tree.
+derive_expr='.. | select((tag == "!!str") and (. == "'"$REGISTRY"'/*"))
+    | (path | .[-1] = "tag" | join("."))
+    + "|" + (. | sub("^'"$REGISTRY"'/"; "") | sub(":.*$"; ""))'
+
+PINNABLE_IMAGES=()
+for values_file in "$ROSSOCTL_VALUES" "$ROSSOCTL_DEPS_VALUES"; do
+    while IFS= read -r derived; do
+        [[ -z "$derived" ]] && continue
+        PINNABLE_IMAGES+=("$values_file|.$derived")
+    done < <(yq eval "$derive_expr" "$values_file")
+done
+
+if [[ ${#PINNABLE_IMAGES[@]} -eq 0 ]]; then
+    echo "error: no $REGISTRY/* images found in chart values — image derivation failed" >&2
+    exit 1
+fi
 
 # ---------------------------------------------------------------------------
 # Colors
@@ -151,6 +167,59 @@ if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
 else
     RED=''; GREEN=''; YELLOW=''; NC=''
 fi
+
+# ---------------------------------------------------------------------------
+# Surgical in-place value replacement
+#
+# `yq -i` rewrites (and reformats) the whole document — it drops blank lines and
+# re-indents sequences, which turned a 9-tag pin into ~100 lines of churn. To keep
+# the diff to only the version lines, we locate each target node's line with
+# `yq '... | line'` (read-only) and rewrite just that line's value with sed. The
+# line count never changes (same-line value swap), so line numbers stay valid
+# across successive edits within a file.
+# ---------------------------------------------------------------------------
+
+# Detect GNU vs BSD/macOS sed once: GNU accepts `--version`; BSD needs `-i ''`.
+if sed --version >/dev/null 2>&1; then
+    sed_i() { sed -i "$@"; }
+else
+    sed_i() { sed -i '' "$@"; }
+fi
+
+# pin_scalar FILE YQ_PATH VALUE — rewrite only the value of the scalar at YQ_PATH
+# to VALUE, in place, touching just that one line (no document reflow).
+#
+# yq's `line` operator is used as an anchor, but its offset is not uniform (0 for
+# top-level keys like Chart.yaml's .version, but -1 for nested keys in
+# values.yaml), so we resolve the exact line by matching YQ_PATH's trailing key
+# within a one-line window of the anchor. The post-write assertion at the call
+# site re-reads via yq and fails loudly if the substitution missed.
+pin_scalar() {
+    local file="$1" yq_path="$2" value="$3"
+    local key="${yq_path##*.}"
+    local anchor cand target=""
+    anchor=$(yq eval "$yq_path | line" "$file")
+    if [[ -z "$anchor" || "$anchor" == "0" ]]; then
+        echo "error: could not locate $yq_path in ${file#$REPO_ROOT/}" >&2
+        exit 1
+    fi
+    for cand in "$anchor" $((anchor + 1)); do
+        if sed -n "${cand}p" "$file" | grep -qE "^[[:space:]]*${key}:"; then
+            target="$cand"; break
+        fi
+    done
+    if [[ -z "$target" ]]; then
+        echo "error: could not resolve '$key:' line near $anchor in ${file#$REPO_ROOT/}" >&2
+        exit 1
+    fi
+    # Replace only the scalar value, preserving the key, its existing quoting,
+    # and any trailing comment. A blunt `s#: .*#: value#` would silently unquote
+    # (e.g. Chart.yaml's quoted appVersion) and strip trailing comments — changes
+    # the post-write assertion can't catch, since it compares the parsed value.
+    # Groups: 1=indent+key+colon+space, 2=open quote (or empty), 3=close quote,
+    # 4=trailing whitespace+comment; the value between 2 and 3 is rewritten.
+    sed_i -E "${target}s|^([[:space:]]*[^:]+:[[:space:]]*)(['\"]?)[^#[:space:]'\"]*(['\"]?)([[:space:]]*(#.*)?)\$|\1\2${value}\3\4|" "$file"
+}
 
 # ---------------------------------------------------------------------------
 # Verify images exist (optional)
@@ -213,7 +282,9 @@ for entry in "${PINNABLE_IMAGES[@]}"; do
     if [[ "$DRY_RUN" == "true" ]]; then
         printf '%s[DRY]%s  %s (%s): %s → %s\n' "$YELLOW" "$NC" "$image_name" "$rel_path" "$current" "$VERSION"
     else
-        yq eval --arg v "$VERSION" "$yq_path = \$v" -i "$target_file"
+        pin_scalar "$target_file" "$yq_path" "$VERSION"
+        got=$(yq eval "$yq_path" "$target_file")
+        [[ "$got" == "$VERSION" ]] || { echo "error: pin verify failed for $yq_path in $rel_path (got '$got')" >&2; exit 1; }
         printf '%s[PIN]%s  %s (%s): %s → %s\n' "$GREEN" "$NC" "$image_name" "$rel_path" "$current" "$VERSION"
     fi
 done
@@ -239,12 +310,15 @@ if [[ "$SKIP_CHART_VERSION" != "true" ]]; then
     chart_ver="${CHART_VERSION#v}"
 
     if [[ "$DRY_RUN" == "true" ]]; then
-        current_chart_ver=$(yq eval '.version' "$KAGENTI_CHART")
+        current_chart_ver=$(yq eval '.version' "$ROSSOCTL_CHART")
         printf '%s[DRY]%s  Chart.yaml version: %s → %s\n' "$YELLOW" "$NC" "$current_chart_ver" "$chart_ver"
         printf '%s[DRY]%s  Chart.yaml appVersion: → %s\n' "$YELLOW" "$NC" "$chart_ver"
     else
-        yq eval --arg v "$chart_ver" '.version = $v' -i "$KAGENTI_CHART"
-        yq eval --arg v "$chart_ver" '.appVersion = $v' -i "$KAGENTI_CHART"
+        pin_scalar "$ROSSOCTL_CHART" '.version' "$chart_ver"
+        pin_scalar "$ROSSOCTL_CHART" '.appVersion' "$chart_ver"
+        got_v=$(yq eval '.version' "$ROSSOCTL_CHART")
+        got_av=$(yq eval '.appVersion' "$ROSSOCTL_CHART")
+        [[ "$got_v" == "$chart_ver" && "$got_av" == "$chart_ver" ]] || { echo "error: Chart.yaml version pin verify failed (version='$got_v' appVersion='$got_av')" >&2; exit 1; }
         printf '%s[PIN]%s  Chart.yaml version + appVersion → %s\n' "$GREEN" "$NC" "$chart_ver"
     fi
 fi
