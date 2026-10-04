@@ -132,7 +132,7 @@ For each command in a sandbox skill, verify it matches a pattern in `.claude/set
 | `kubectl describe` | `Bash(kubectl describe:*)` |
 | `kubectl logs` | `Bash(kubectl logs:*)` |
 | `helm list` | `Bash(helm list:*)` |
-| `KUBECONFIG=~/clusters/hcp/... kubectl` | `Bash(KUBECONFIG=*/clusters/hcp/rossoctl-hypershift-custom-*/auth/kubeconfig kubectl:*)` |
+| `KUBECONFIG=~/clusters/hcp/... kubectl` | `Bash(KUBECONFIG=*/clusters/hcp/rossoctl-hypershift-custom-*/auth/kubeconfig kubectl *)` |
 | `uv run pytest` | `Bash(uv run pytest:*)` |
 
 If a command is NOT covered, add the pattern to `.claude/settings.json` in the `allow` array.
